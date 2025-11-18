@@ -6692,16 +6692,17 @@ files = [
 
 [[package]]
 name = "toyaikit"
-version = "0.0.5"
+version = "0.0.8"
 description = "Toolkit for building AI assistants and tool integrations."
 optional = false
 python-versions = ">=3.10"
 files = [
-    {file = "toyaikit-0.0.5-py3-none-any.whl", hash = "sha256:9b5aa05309890d8efc1a56ec36f3fec151ca279c0c607d59a82d1225ac9b93eb"},
-    {file = "toyaikit-0.0.5.tar.gz", hash = "sha256:ed6aafb529d0a1ed15efdced8d0ea0cbf0939185026023ac5b99dcbb5f6eee37"},
+    {file = "toyaikit-0.0.8-py3-none-any.whl", hash = "sha256:e4859fae21e874ed230f039e36d6535bbc0126c44fe48a37c885b2166f493224"},
+    {file = "toyaikit-0.0.8.tar.gz", hash = "sha256:6958ed1752cce465164203235c88868035d89b4be3daca2d4ef57d4400dae652"},
 ]
 
 [package.dependencies]
+genai-prices = ">=0.0.34"
 ipython = "*"
 mistune = ">=3.1.3"
 openai = ">=1.97.0"
@@ -7419,4 +7420,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.12,<3.15"
-content-hash = "4e48c9aaf75c31161f7d0dba6bebbd1ee9442f2b69de428159d80ce2a5bdc467"
+content-hash = "5434a8bad5f5b006dabd1bf7d2d34b7497b559ed6409ac8ab186eb50c36d8413"
