@@ -1,4 +1,4 @@
-.PHONY: help install setup check-elasticsearch index-ground-truth index-companies run-stress-tests run-unit-tests run-judge-tests run-judge-eval process-logs dashboard export-ground-truth verify clean test
+.PHONY: help install setup check-elasticsearch index-ground-truth index-companies run-stress-tests run-unit-tests run-judge-tests run-judge-eval autograder process-logs dashboard export-ground-truth verify clean test
 
 # Default target
 help:
@@ -19,6 +19,7 @@ help:
 	@echo "  make run-unit-tests      - Run unit tests"
 	@echo "  make run-judge-tests     - Run judge evaluation tests"
 	@echo "  make run-judge-eval      - Run judge evaluation on stress test results"
+	@echo "  make autograder          - Run autograder to evaluate project against rubric"
 	@echo "  make test                - Run all tests (unit + judge)"
 	@echo ""
 	@echo "Monitoring:"
@@ -87,6 +88,12 @@ run-judge-eval:
 	@echo "Running judge evaluation on stress test results..."
 	poetry run python eval/judge_evaluator.py
 	@echo "✅ Judge evaluation complete"
+
+# Run autograder
+autograder:
+	@echo "Running autograder..."
+	poetry run python autograder.py
+	@echo "✅ Autograder complete - see README_autograder.md for results"
 
 # Run all tests
 test: run-unit-tests run-judge-tests

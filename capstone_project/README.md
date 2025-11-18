@@ -423,15 +423,49 @@ capstone_project/
 
 ## Getting Started
 
-This section provides complete instructions for setting up and running the project from scratch.
+This section provides complete instructions for setting up and running the project from scratch. Follow these steps to reproduce the project.
+
+**Reproducibility**: All instructions below ensure you can fully reproduce this project. All data is publicly accessible from the SEC EDGAR API, and all dependencies are clearly specified.
 
 ### System Requirements
 
+Before starting, ensure you have:
+
 - **Python**: 3.12 or 3.13 (3.14 not supported)
-- **Poetry**: For dependency management
-- **Docker**: For running Elasticsearch (or native Elasticsearch installation)
+- **Poetry**: For dependency management ([install Poetry](https://python-poetry.org/docs/#installation))
+- **Docker**: For running Elasticsearch (recommended) or native Elasticsearch installation
 - **Git**: For cloning the repository
-- **OpenAI API Key**: Required for the agent to function
+- **OpenAI API Key**: Required for the agent to function ([get API key](https://platform.openai.com/api-keys))
+
+### Quick Start (5 Minutes)
+
+For the fastest setup:
+
+```bash
+# 1. Clone and navigate
+git clone <repository-url>
+cd ai-bootcamp-codespace/capstone_project
+
+# 2. Install dependencies
+poetry install
+
+# 3. Set up environment
+cat > .env << EOF
+SEC_USER_AGENT=YourName YourEmail@example.com
+OPENAI_API_KEY=your-openai-api-key-here
+EOF
+
+# 4. Start Elasticsearch (Docker)
+./src/setup_elasticsearch.sh
+
+# 5. Verify setup
+poetry run python src/check_elasticsearch.py
+
+# 6. Run a test
+poetry run python src/run_stress_tests.py
+```
+
+**Note**: The project includes pre-indexed data (135,481 documents). If the index is empty, see [Data Accessibility](#data-accessibility) section below.
 
 ### Step-by-Step Setup
 
@@ -536,7 +570,9 @@ print('✅ Imports successful')
 
 ### Data Accessibility
 
-#### Pre-Indexed Data
+**All data is publicly accessible and can be reproduced from scratch.**
+
+#### Pre-Indexed Data (Available by Default)
 
 The project includes an Elasticsearch index with **135,481 documents** covering:
 
@@ -544,68 +580,117 @@ The project includes an Elasticsearch index with **135,481 documents** covering:
 - Multiple companies with cybersecurity disclosures (2014-2024)
 - Various SEC form types (8-K, 10-K, 10-Q, 8-K/A)
 
-**Note**: The index is created when you run indexing scripts. If starting fresh, you'll need to index data first (see below).
+**Data Source**: All data is fetched from the public [SEC EDGAR API](https://www.sec.gov/edgar/sec-api-documentation) - no proprietary or restricted data is required.
 
-#### Indexing Your Own Data
+**Index Status**: The index is automatically created when you run the indexing scripts. If you're starting with a fresh Elasticsearch instance, the index will be empty initially. Follow the indexing steps below to populate it.
 
-To index SEC filings:
+**Verifying Data Availability**:
 
-1. **Index Ground Truth Filings** (recommended first step):
+```bash
+# Check if index exists and has data
+poetry run python -c "
+from elasticsearch import Elasticsearch
+es = Elasticsearch('http://localhost:9200')
+if es.indices.exists(index='sec_filings'):
+    count = es.count(index='sec_filings')['count']
+    print(f'✅ Index exists with {count:,} documents')
+else:
+    print('⚠️  Index does not exist - run indexing scripts')
+"
+```
 
-   ```bash
-   cd capstone_project
-   poetry run python data/check_and_index_ground_truth.py
-   ```
+#### Indexing Data (If Starting Fresh)
 
-   This will:
-   - Check which filings from `eval/ground_truth_21_cases.csv` are indexed
-   - Download and index any missing filings
-   - Generate a report in `eval/ground_truth_indexing_results.json`
+If you're starting with an empty Elasticsearch index, follow these steps to populate it:
 
-2. **Index Additional Companies**:
-
-   ```bash
-   poetry run python data/index_cybersecurity_companies.py
-   ```
-
-   This indexes filings for 13 companies with known cybersecurity incidents.
-
-#### Data Sources
-
-- **SEC EDGAR API**: All data is fetched from the public SEC EDGAR API
-- **No external data required**: All data is publicly accessible
-- **Cached locally**: Downloaded filings are cached in `data/sec_downloads/` for faster re-indexing
-
-### Running the Main Application
-
-#### Option 1: Using the Jupyter Notebook (Interactive)
+**Step 1: Index Ground Truth Filings** (recommended first step):
 
 ```bash
 cd capstone_project
-poetry run jupyter notebook src/sec_cybersecurity_agent.ipynb
+poetry run python data/check_and_index_ground_truth.py
 ```
 
-This opens an interactive notebook where you can:
+This script will:
+- Check which filings from `eval/ground_truth_21_cases.csv` are already indexed
+- Download missing filings from the SEC EDGAR API
+- Parse and chunk the filings
+- Index chunks into Elasticsearch
+- Generate a report in `eval/ground_truth_indexing_results.json`
 
-- Run the agent interactively
-- Test different queries
-- See tool calls and responses
+**Expected Output**: The script will download and index approximately 19-22 filings, creating ~1,600-2,000 chunks.
 
-#### Option 2: Using the Stress Test Runner (Automated)
+**Step 2: Index Additional Companies** (optional):
+
+```bash
+poetry run python data/index_cybersecurity_companies.py
+```
+
+This indexes filings for 13 companies with known cybersecurity incidents, adding more data to the index.
+
+**Using Makefile**:
+
+```bash
+# Index ground truth filings
+make index-ground-truth
+
+# Index additional companies
+make index-companies
+```
+
+#### Data Sources
+
+- **SEC EDGAR API**: All data is fetched from the public [SEC EDGAR API](https://www.sec.gov/edgar/sec-api-documentation)
+- **No external data required**: All data is publicly accessible - no API keys needed for SEC data
+- **No proprietary data**: Everything can be reproduced from public sources
+- **Cached locally**: Downloaded filings are cached in `data/sec_downloads/` for faster re-indexing
+- **Reproducible**: Anyone can run the indexing scripts to recreate the entire dataset
+
+### Running the Main Application
+
+The project can be run in several ways. Choose the method that best fits your needs.
+
+#### Option 1: Using the Stress Test Runner (Recommended for First Run)
+
+This is the easiest way to test the agent with predefined questions:
 
 ```bash
 cd capstone_project
 poetry run python src/run_stress_tests.py
 ```
 
-This will:
+**What this does**:
+- Loads 20 test questions from `eval/stress_test_questions.csv`
+- Runs each question through the agent
+- Saves results to `eval/stress_test_results.json`
+- Automatically logs each run to `logs/` directory
 
-- Load questions from `eval/stress_test_questions.csv`
-- Run each question through the agent
-- Save results to `eval/stress_test_results.json`
-- Automatically log each run to `logs/` directory
+**Expected Output**: The script will process all 20 questions and save results. This may take 10-20 minutes depending on API response times.
 
-#### Option 3: Using Python Scripts Directly
+**Using Makefile**:
+```bash
+make run-stress-tests
+```
+
+#### Option 2: Using the Jupyter Notebook (Interactive Development)
+
+For interactive testing and development:
+
+```bash
+cd capstone_project
+poetry run jupyter notebook src/sec_cybersecurity_agent.ipynb
+```
+
+**What you can do**:
+- Run the agent interactively
+- Test different queries
+- See tool calls and responses in real-time
+- Experiment with different prompts
+
+**Note**: Requires Jupyter to be installed (`poetry install` includes it).
+
+#### Option 3: Using Python Scripts Directly (Programmatic Usage)
+
+For programmatic access to the agent tools:
 
 ```python
 from src.sec_search_tools import search_cybersecurity_disclosures
@@ -624,19 +709,58 @@ disclosures = search_cybersecurity_disclosures(
 print(f"Found {len(disclosures)} disclosures")
 ```
 
-### Quick Start Summary
+**Save as a script** (e.g., `test_agent.py`):
+```bash
+cd capstone_project
+poetry run python test_agent.py
+```
 
-**Using Makefile (Recommended)**:
+#### Option 4: Using the Makefile (Simplified Commands)
+
+All common operations are available via Makefile:
 
 ```bash
-# Complete setup and run tests
+cd capstone_project
+
+# Run stress tests
+make run-stress-tests
+
+# Run unit tests
+make run-unit-tests
+
+# Run judge evaluation
+make run-judge-eval
+
+# Start monitoring dashboard
+make dashboard
+```
+
+See [Using the Makefile](#using-the-makefile) section for all available commands.
+
+### Complete Setup Checklist
+
+To ensure full reproducibility, follow this checklist:
+
+- [ ] **Prerequisites installed**: Python 3.12/3.13, Poetry, Docker
+- [ ] **Repository cloned**: `git clone <repository-url> && cd ai-bootcamp-codespace/capstone_project`
+- [ ] **Dependencies installed**: `poetry install`
+- [ ] **Environment configured**: `.env` file created with `SEC_USER_AGENT` and `OPENAI_API_KEY`
+- [ ] **Elasticsearch running**: `./src/setup_elasticsearch.sh` or Docker container running
+- [ ] **Elasticsearch verified**: `poetry run python src/check_elasticsearch.py` succeeds
+- [ ] **Data indexed** (if starting fresh): `poetry run python data/check_and_index_ground_truth.py`
+- [ ] **Application tested**: `poetry run python src/run_stress_tests.py` runs successfully
+
+**Quick Setup with Makefile**:
+
+```bash
+# Complete setup in one command
 cd capstone_project
 make quickstart
 ```
 
-**Manual Setup**:
+This will: install dependencies, set up Elasticsearch, verify installation, index ground truth data, and run stress tests.
 
-For a quick test run:
+**Manual Setup** (if not using Makefile):
 
 ```bash
 # 1. Install dependencies
@@ -644,16 +768,21 @@ cd capstone_project
 poetry install
 
 # 2. Set up environment
-echo 'SEC_USER_AGENT=YourName YourEmail@example.com' > .env
-echo 'OPENAI_API_KEY=your-key' >> .env
+cat > .env << EOF
+SEC_USER_AGENT=YourName YourEmail@example.com
+OPENAI_API_KEY=your-openai-api-key-here
+EOF
 
 # 3. Start Elasticsearch
 ./src/setup_elasticsearch.sh
 
-# 4. Index ground truth data
+# 4. Verify Elasticsearch
+poetry run python src/check_elasticsearch.py
+
+# 5. Index ground truth data (if index is empty)
 poetry run python data/check_and_index_ground_truth.py
 
-# 5. Run a test
+# 6. Run a test
 poetry run python src/run_stress_tests.py
 ```
 
@@ -1026,6 +1155,71 @@ The judge evaluation provides:
 - **Summary Statistics**: Average scores, pass rates, etc.
 
 See `eval/judge_evaluation_results.json` for detailed evaluation results.
+
+#### Autograder
+
+The autograder automatically evaluates the project against the evaluation rubric, generating a comprehensive report that assesses all core criteria and bonus points.
+
+**What it evaluates**:
+
+- **Core Criteria** (18 points max):
+  - Problem Description (2 points)
+  - Knowledge Base and Retrieval (2 points)
+  - Agents and LLM (3 points)
+  - Code Organization (2 points)
+  - Testing (2 points)
+  - Evaluation (3 points)
+  - Monitoring (2 points)
+  - Reproducibility (2 points)
+
+- **Bonus Points** (15 points max):
+  - Evaluation bonuses: hand-crafted ground truth, manual evaluation
+  - Monitoring bonuses: user feedback, automatic ground truth generation
+  - Best practices: containerization, docker-compose, Makefile, UV, CI/CD
+  - Additional: UI, cloud deployment
+
+**Run the Autograder**:
+
+```bash
+cd capstone_project
+poetry run python autograder.py
+```
+
+**What it does**:
+
+- Reads and analyzes `README.md` for documentation completeness
+- Checks for required files and code structure
+- Verifies tool implementations and agent configuration
+- Evaluates testing coverage and evaluation framework
+- Checks monitoring system components
+- Assesses reproducibility instructions
+- Generates a timestamped report with detailed scoring
+
+**Output**:
+
+The autograder generates `README_autograder.md` containing:
+
+- **Summary**: Total points, passing status, timestamp
+- **Detailed Evaluation**: Points for each criterion with evidence
+- **Bonus Points Breakdown**: Detailed assessment of bonus categories
+- **Recommendations**: Suggestions for improvement
+
+**Example Output**:
+
+```text
+Total Points: 25.0 / 33.0
+Passing Score: 12.0 points
+Status: ✅ PASSED
+```
+
+**Using Makefile**:
+
+```bash
+# Run autograder
+make autograder
+```
+
+**Note**: The autograder performs static analysis of the codebase and documentation. It does not require Elasticsearch or API keys to run, making it suitable for quick project assessment.
 
 ## Monitoring
 
